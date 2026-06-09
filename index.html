@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Control Station</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .dashboard { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%; }
+        h1 { color: #1e293b; margin-bottom: 25px; font-size: 24px; }
+        .card-container { display: flex; gap: 15px; justify-content: space-between; margin-bottom: 25px; }
+        .card { background: #f8fafc; padding: 20px; border-radius: 10px; flex: 1; border: 1px solid #e2e8f0; }
+        .card h2 { font-size: 13px; color: #64748b; text-transform: uppercase; margin: 0 0 10px 0; }
+        .value { font-size: 26px; font-weight: bold; color: #0f172a; }
+        .temp-color { color: #ef4444; }
+        .hum-color { color: #3b82f6; }
+        .control-panel { border-top: 1px solid #e2e8f0; padding-top: 25px; }
+        .led-btn { padding: 15px 30px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; border-radius: 8px; width: 100%; transition: 0.2s ease; }
+        .on { background-color: #10b981; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+        .off { background-color: #64748b; color: white; }
+        .status { margin-top: 20px; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <h1>ESP32 Control Station</h1>
+        
+        <div class="card-container">
+            <div class="card">
+                <h2>Temperature</h2>
+                <div id="temp" class="value temp-color">--°C</div>
+            </div>
+            <div class="card">
+                <h2>Humidity</h2>
+                <div id="hum" class="value hum-color">--%</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <button id="led-btn" class="off">LED IS OFF</button>
+        </div>
+
+        <div id="status" class="status">Connecting to network...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Set up the cloud keys
+        const SUPABASE_URL = "https://dxalgqtgylopgjgptaou.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4YWxncXRneWxvcGdqZ3B0YW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDgwODAsImV4cCI6MjA5NjU4NDA4MH0.ClONYDUguhlClVMzliqpqEAHBCefCtC2isgE5LeKwVE";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const tempEl = document.getElementById('temp');
+        const humEl = document.getElementById('hum');
+        const ledBtn = document.getElementById('led-btn');
+        const statusEl = document.getElementById('status');
+        
+        let currentLedStatus = "OFF";
+
+        function updateSensorUI(temperature, humidity) {
+            tempEl.textContent = `${temperature.toFixed(1)}°C`;
+            humEl.textContent = `${humidity.toFixed(1)}%`;
+        }
+
+        function updateButtonUI(status) {
+            currentLedStatus = status;
+            ledBtn.textContent = `LED IS ${status}`;
+            ledBtn.className = `led-btn ${status.toLowerCase()}`;
+        }
+
+        // Run an initial historical pull upon browser load
+        async function loadInitialData() {
+            let { data: sensorData } = await supabase.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
+            if (sensorData && sensorData.length > 0) updateSensorUI(sensorData.temperature, sensorData.humidity);
+
+            let { data: controlData } = await supabase.from('device_controls').select('status').eq('device_name', 'esp32_led').single();
+            if (controlData) updateButtonUI(controlData.status);
+            
+            statusEl.textContent = "Telemetry engine sync complete.";
+        }
+
+        // Modify state column inside Supabase upon element toggle click
+        ledBtn.addEventListener('click', async () => {
+            const targetStatus = (currentLedStatus === "ON") ? "OFF" : "ON";
+            statusEl.textContent = "Broadcasting switch event...";
+            await supabase.from('device_controls').update({ status: targetStatus }).eq('device_name', 'esp32_led');
+        });
+
+        // Initialize background WebSockets to handle structural updates without site refreshes
+        supabase
+            .channel('iot-sync')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
+                updateSensorUI(payload.new.temperature, payload.new.humidity);
+                statusEl.textContent = "New telemetry stream received.";
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'device_controls' }, payload => {
+                if (payload.new.device_name === 'esp32_led') {
+                    updateButtonUI(payload.new.status);
+                    statusEl.textContent = `LED set to ${payload.new.status}`;
+                }
+            })
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') loadInitialData();
+            });
+    </script>
+</body>
+</html>
