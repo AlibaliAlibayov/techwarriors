@@ -49,7 +49,9 @@
         // Set up the cloud keys
         const SUPABASE_URL = "https://dxalgqtgylopgjgptaou.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4YWxncXRneWxvcGdqZ3B0YW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDgwODAsImV4cCI6MjA5NjU4NDA4MH0.ClONYDUguhlClVMzliqpqEAHBCefCtC2isgE5LeKwVE";
-        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Naming fix implemented here to prevent global variable crashes
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const tempEl = document.getElementById('temp');
         const humEl = document.getElementById('hum');
@@ -71,10 +73,10 @@
 
         // Run an initial historical pull upon browser load
         async function loadInitialData() {
-            let { data: sensorData } = await supabase.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
+            let { data: sensorData } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
             if (sensorData && sensorData.length > 0) updateSensorUI(sensorData.temperature, sensorData.humidity);
 
-            let { data: controlData } = await supabase.from('device_controls').select('status').eq('device_name', 'esp32_led').single();
+            let { data: controlData } = await supabaseClient.from('device_controls').select('status').eq('device_name', 'esp32_led').single();
             if (controlData) updateButtonUI(controlData.status);
             
             statusEl.textContent = "Telemetry engine sync complete.";
@@ -84,11 +86,11 @@
         ledBtn.addEventListener('click', async () => {
             const targetStatus = (currentLedStatus === "ON") ? "OFF" : "ON";
             statusEl.textContent = "Broadcasting switch event...";
-            await supabase.from('device_controls').update({ status: targetStatus }).eq('device_name', 'esp32_led');
+            await supabaseClient.from('device_controls').update({ status: targetStatus }).eq('device_name', 'esp32_led');
         });
 
         // Initialize background WebSockets to handle structural updates without site refreshes
-        supabase
+        supabaseClient
             .channel('iot-sync')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
                 updateSensorUI(payload.new.temperature, payload.new.humidity);
