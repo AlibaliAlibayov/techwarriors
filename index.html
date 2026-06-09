@@ -49,7 +49,7 @@
         // Set up the cloud keys
         const SUPABASE_URL = "https://dxalgqtgylopgjgptaou.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4YWxncXRneWxvcGdqZ3B0YW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDgwODAsImV4cCI6MjA5NjU4NDA4MH0.ClONYDUguhlClVMzliqpqEAHBCefCtC2isgE5LeKwVE";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const tempEl = document.getElementById('temp');
         const humEl = document.getElementById('hum');
