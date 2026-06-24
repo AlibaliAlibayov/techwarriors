@@ -3,161 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechWarriors Smart Farmland Ecosystem</title>
+    <title>ESP32 Farm Telemetry & Control Station</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --primary-water: #0ea5e9;
-            --danger-water: #ef4444;
-            --accent-green: #10b981;
-        }
+        /* --- GLOBAL ROOT VARIABLES & THEME --- */
+        :root { 
+            --bg-color: #0f172a; 
+            --panel-bg: #1e293b; 
+            --text-main: #f8fafc; 
+            --text-muted: #94a3b8; 
+            --primary-water: #0ea5e9; 
+            --danger-water: #ef4444; 
+        } 
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+        } 
+
+        .dashboard { 
+            background: var(--panel-bg); 
+            max-width: 900px; 
+            width: 100%; 
+            border-radius: 24px; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); 
+            padding: 35px; 
+            box-sizing: border-box; 
+        } 
+
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #334155; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px; 
+        } 
+
+        h1 { 
+            margin: 0; 
+            font-size: 24px; 
+            font-weight: 700; 
+            letter-spacing: -0.5px; 
+        } 
+         
+        .status-badge { 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            padding: 6px 14px; 
+            border-radius: 50px; 
+            font-size: 13px; 
+            color: #38bdf8; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        } 
+
+        .status-dot { 
+            width: 8px; 
+            height: 8px; 
+            background: #38bdf8; 
+            border-radius: 50%; 
+        } 
+
+        .main-grid { 
+            display: grid; 
+            grid-template-columns: 1.2fr 1fr; 
+            gap: 30px; 
+        } 
+
+        @media (max-width: 768px) { 
+            .main-grid { 
+                grid-template-columns: 1fr; 
+            } 
+        } 
+
+        /* --- WATER RESERVOIR TANKS ENGINE --- */ 
+        .tanks-container { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            background: #111827; 
+            padding: 25px; 
+            border-radius: 16px; 
+            border: 1px solid #334155; 
+        } 
+
+        .tank-wrapper { 
+            text-align: center; 
+        } 
+
+        .tank-label { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            margin-bottom: 15px; 
+        } 
+
+        .glass-tank { 
+            position: relative; 
+            width: 120px; 
+            height: 200px; 
+            background: rgba(255, 255, 255, 0.02); 
+            border: 4px solid #475569; 
+            border-radius: 0 0 20px 20px; 
+            margin: 0 auto; 
+            overflow: hidden; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8); 
+        } 
+
+        .liquid { 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 0%; 
+            background: #0284c7; 
+            transition: height 1s ease-out; 
+        } 
+
+        .liquid::before { 
+            content: ""; 
+            position: absolute; 
+            left: 0; 
+            bottom: 100%; 
+            width: 200%; 
+            height: 12px; 
+            background-repeat: repeat-x; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,120V73.71c47.79,-22.2,103.59,-32.17,158,-28,70.36,5.37,136.33,33.31,206.8,37.5C438.64,87.57,512.34,66.33,583,47.95c69.27,-18,138.3,-24.88,209.4,-13.08,36.15,6,69.85,17.84,104.45,29.34C989.49,95,1113,134.29,1200,77.6V120Z' fill='%230284c7'/%3E%3C/svg%3E"); 
+            background-size: 120px 12px; 
+            animation: waveHorizontalMove 2s linear infinite; 
+        } 
+
+        .tank-percentage { 
+            font-size: 28px; 
+            font-weight: 700; 
+            margin-top: 15px; 
+            color: var(--text-main); 
+        } 
+
+        .tank-wrapper.danger .liquid { 
+            background: #dc2626; 
+        } 
+
+        .tank-wrapper.danger .liquid::before { 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,120V73.71c47.79,-22.2,103.59,-32.17,158,-28,70.36,5.37,136.33,33.31,206.8,37.5C438.64,87.57,512.34,66.33,583,47.95c69.27,-18,138.3,-24.88,209.4,-13.08,36.15,6,69.85,17.84,104.45,29.34C989.49,95,1113,134.29,1200,77.6V120Z' fill='%23dc2626'/%3E%3C/svg%3E"); 
+        } 
+        .tank-wrapper.danger .tank-percentage { 
+            color: #f87171; 
+        } 
+
+        /* --- METRIC PANEL LAYOUT & ICONS --- */ 
+        .side-panel { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        } 
+
+        .metric-card { 
+            background: #111827; 
+            border: 1px solid #334155; 
+            padding: 22px; 
+            border-radius: 16px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        } 
+
+        .metric-header {
             display: flex;
-            justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            gap: 10px;
         }
 
-        .dashboard {
-            background: var(--panel-bg);
-            max-width: 1000px;
-            width: 100%;
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            padding: 35px;
-            box-sizing: border-box;
+        .metric-icon {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
+        .metric-info h3 { 
+            margin: 0; 
+            font-size: 11px; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+        } 
 
-        h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-        
-        .status-badge {
-            background: #111827;
-            border: 1px solid #334155;
-            padding: 6px 14px;
-            border-radius: 50px;
-            font-size: 13px;
-            color: #38bdf8;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .metric-info p { 
+            margin: 8px 0 0 0; 
+            font-size: 32px; 
+            font-weight: bold; 
+        } 
+         
+        .soil-txt { color: #22c55e; }
+        .soil-icon { stroke: #22c55e; fill: none; }
+        .temp-txt { color: #f87171; } 
+        .temp-icon { stroke: #f87171; fill: none; }
+        .hum-txt { color: #60a5fa; } 
+        .hum-icon { stroke: #60a5fa; fill: none; }
 
-        .status-dot { width: 8px; height: 8px; background: #38bdf8; border-radius: 50%; }
+        /* --- INTERACTIVE CONTROL SECTION --- */
+        .control-card { 
+            background: #111827; 
+            border: 1px solid #334155; 
+            padding: 25px; 
+            border-radius: 16px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        } 
 
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 30px;
-        }
-
-        @media (max-width: 768px) {
-            .main-grid { grid-template-columns: 1fr; }
-        }
-
-        .tanks-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            background: #111827;
-            padding: 25px;
-            border-radius: 16px;
-            border: 1px solid #334155;
-        }
-
-        .tank-wrapper { text-align: center; }
-        .tank-label { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 15px; }
-
-        .glass-tank {
-            position: relative;
-            width: 120px;
-            height: 200px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 4px solid #475569;
-            border-radius: 0 0 20px 20px;
-            margin: 0 auto;
-            overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-        }
-
-        .liquid {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 0%;
-            background: #0284c7;
-            transition: height 1s ease-out;
-        }
-
-        .liquid::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            bottom: 100%;
-            width: 200%;
-            height: 12px;
-            background-image: repeat-x;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,42.4V0Z' fill='%230284c7'/%3E%3C/svg%3E");
-            background-size: 120px 12px;
-            animation: waveHorizontalMove 2s linear infinite;
-        }
-
-        .tank-percentage { font-size: 28px; font-weight: 700; margin-top: 15px; color: var(--text-main); }
-
-        .tank-wrapper.danger .liquid { background: #dc2626; }
-        .tank-wrapper.danger .liquid::before {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,42.4V0Z' fill='%23dc2626'/%3E%3C/svg%3E");
-        }
-        .tank-wrapper.danger .tank-percentage { color: #f87171; }
-
-        .side-panel { display: flex; flex-direction: column; gap: 20px; }
-
-        .metric-card {
-            background: #111827;
-            border: 1px solid #334155;
-            padding: 16px 20px;
-            border-radius: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .metric-info h3 { margin: 0; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-info p { margin: 5px 0 0 0; font-size: 28px; font-weight: bold; }
-        
-        .soil-txt { color: #ea580c; }
-        .temp-txt { color: #f87171; }
-        .hum-txt { color: #60a5fa; }
-
-        .control-card {
-            background: #111827;
-            border: 1px solid #334155;
-            padding: 20px;
-            border-radius: 16px;
+        .control-section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            text-align: left;
         }
 
         .input-group {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 8px;
         }
 
         .target-input {
@@ -165,218 +243,290 @@
             background: #1e293b;
             border: 1px solid #475569;
             border-radius: 8px;
-            padding: 10px;
+            padding: 12px;
             color: #fff;
             font-size: 16px;
             text-align: center;
+            outline: none;
         }
 
         .save-btn {
-            background: var(--accent-green);
+            background: #3b82f6;
             color: white;
             border: none;
-            padding: 0 20px;
+            padding: 0 22px;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+        .save-btn:hover { 
+            background: #2563eb; 
         }
 
-        .manual-container {
+        .manual-container { 
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            margin-top: 10px;
         }
 
-        .override-btn {
-            padding: 12px;
-            font-weight: 600;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        /* Pure Class Driven State Styles */
+        .override-btn { 
+            padding: 14px; 
+            font-size: 14px; 
+            font-weight: 600; 
+            border: 1px solid #475569; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+        } 
+        .override-btn.inactive { 
+            background: #1e293b; 
+            color: #94a3b8; 
+            border-color: #475569;
+        } 
+        .override-btn.inactive:hover {
+            background: #334155;
+            color: #f8fafc;
+            border-color: #64748b;
         }
-        .override-btn.active { background: #eab308; color: #000; box-shadow: 0 0 15px rgba(234,179,8,0.4); }
-        .override-btn.inactive { background: #475569; color: #cbd5e1; }
+        .override-btn.active { 
+            background: #eab308; 
+            color: #0f172a; 
+            border-color: #eab308;
+            box-shadow: 0 0 15px rgba(234,179,8,0.3); 
+        } 
 
-        .led-btn {
-            width: 100%;
-            padding: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        .led-btn { 
+            width: 100%; 
+            padding: 16px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            border: 1px solid #475569; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+        } 
+        .led-btn.off { 
+            background: #1e293b; 
+            color: #94a3b8; 
+            border-color: #475569;
+        } 
+        .led-btn.off:hover {
+            background: #334155;
+            color: #f8fafc;
+            border-color: #64748b;
         }
-        .led-btn.on { background: #10b981; color: #fff; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
-        .led-btn.off { background: #475569; color: #cbd5e1; }
+        .led-btn.on { 
+            background: #10b981; 
+            color: #fff; 
+            border-color: #10b981;
+            box-shadow: 0 0 20px rgba(16,185,129,0.4); 
+        } 
 
-        @keyframes waveHorizontalMove {
-            0% { background-position-x: 0px; }
-            100% { background-position-x: 120px; }
+        @keyframes waveHorizontalMove { 
+            0% { background-position-x: 0px; } 
+            100% { background-position-x: 120px; } 
         }
     </style>
 </head>
 <body>
 
-    <div class="dashboard">
-        <header>
-            <div>
-                <h1>TechWarriors Ağıllı Suvarma Sistemi</h1>
-            </div>
-            <div class="status-badge">
-                <div class="status-dot"></div>
-                <span id="status-text">System Synced</span>
-            </div>
-        </header>
+<div class="dashboard">
+    <header>
+        <h1>Farm Telemetry & Control Station</h1>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            System Online
+        </div>
+    </header>
 
-        <div class="main-grid">
-            <div class="tanks-container">
-                <div id="tank1-wrapper" class="tank-wrapper">
-                    <div class="tank-label">Reservoir Tank A</div>
-                    <div class="glass-tank"><div id="liquid1" class="liquid"></div></div>
-                    <div id="pct1" class="tank-percentage">0%</div>
+    <div class="main-grid">
+        <div class="tanks-container">
+            <div id="tank-a-wrapper" class="tank-wrapper">
+                <div class="tank-label">Reservoir Tank A</div>
+                <div class="glass-tank">
+                    <div id="tank-a-fluid" class="liquid"></div>
                 </div>
-
-                <div id="tank2-wrapper" class="tank-wrapper">
-                    <div class="tank-label">Supply Tank B</div>
-                    <div class="glass-tank"><div id="liquid2" class="liquid"></div></div>
-                    <div id="pct2" class="tank-percentage">0%</div>
-                </div>
+                <div id="tank-a-lbl" class="tank-percentage">--%</div>
             </div>
 
-            <div class="side-panel">
-                <div class="metric-card">
-                    <div class="metric-info">
+            <div id="tank-b-wrapper" class="tank-wrapper">
+                <div class="tank-label">Reservoir Tank B</div>
+                <div class="glass-tank">
+                    <div id="tank-b-fluid" class="liquid"></div>
+                </div>
+                <div id="tank-b-lbl" class="tank-percentage">--%</div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="metric-card">
+                <div class="metric-info">
+                    <div class="metric-header">
+                        <svg class="metric-icon soil-icon" viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
                         <h3>Soil Moisture Content</h3>
-                        <p id="soil-val" class="soil-txt">--%</p>
                     </div>
+                    <p id="soil-val" class="soil-txt">--%</p>
                 </div>
+            </div>
 
-                <div class="metric-card">
-                    <div class="metric-info">
-                        <h3>Ambient Temp / Humidity</h3>
-                        <p style="font-size:22px; margin-top:8px;"><span id="temp-val" class="temp-txt">--°C</span> / <span id="hum-val" class="hum-txt">--%</span></p>
+            <div class="metric-card">
+                <div class="metric-info">
+                    <div class="metric-header">
+                        <svg class="metric-icon temp-icon" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                        <h3>Ambient Temp</h3>
                     </div>
+                    <p id="temp-val" class="temp-txt">--°C</p>
                 </div>
+                
+                <div class="metric-info" style="text-align: right;">
+                    <div class="metric-header" style="justify-content: flex-end;">
+                        <svg class="metric-icon hum-icon" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                        <h3>Humidity</h3>
+                    </div>
+                    <p id="hum-val" class="hum-txt">--%</p>
+                </div>
+            </div>
 
-                <div class="control-card">
-                    <h3 style="margin:0; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Target Moisture Level (%)</h3>
+            <div class="control-card">
+                <div>
+                    <div class="control-section-label">Target Moisture Level (%)</div>
                     <div class="input-group">
-                        <input type="number" id="target-input" class="target-input" placeholder="Default: 50" min="0" max="100">
-                        <button id="save-target-btn" class="save-btn">Set</button>
+                        <input type="number" id="target-moisture" class="target-input" value="50" min="0" max="100">
+                        <button id="set-btn" class="save-btn">Set</button>
                     </div>
                 </div>
 
-                <div class="control-card">
-                    <h3 style="margin:0 0 10px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Manual Farmland Irrigation</h3>
+                <div>
+                    <div class="control-section-label">Manual Farmland Irrigation</div>
                     <div class="manual-container">
-                        <button id="btn-tanka" class="override-btn inactive">Pump Tank A</button>
-                        <button id="btn-tankb" class="override-btn inactive">Pump Tank B</button>
+                        <button id="btn-pump-a" class="override-btn inactive">Tank A: OFF</button>
+                        <button id="btn-pump-b" class="override-btn inactive">Tank B: OFF</button>
                     </div>
                 </div>
 
-                <div class="control-card">
-                    <h3 style="margin:0 0 10px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Hardware Actuator</h3>
-                    <button id="led-btn" class="off">LED IS OFF</button>
+                <div>
+                    <div class="control-section-label">Hardware Actuator</div>
+                    <button id="btn-led" class="led-btn off">LED IS OFF</button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const SUPABASE_URL = "https://dxalgqtgylopgjgptaou.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4YWxncXRneWxvcGdqZ3B0YW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDgwODAsImV4cCI6MjA5NjU4NDA4MH0.ClONYDUguhlClVMzliqpqEAHBCefCtC2isgE5LeKwVE";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<script>
+    // ⚠️ ENTER YOUR PROJECT CREDENTIALS HERE
+    // ↓ Make sure to explicitly keep the quotes around your values!
+const SUPABASE_URL = "https://zxywkvbpdqmslqpwoeir.supabase.co"; 
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im...";
+    
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const liquid1 = document.getElementById('liquid1'), liquid2 = document.getElementById('liquid2');
-        const pct1 = document.getElementById('pct1'), pct2 = document.getElementById('pct2');
-        const tank1Wrap = document.getElementById('tank1-wrapper'), tank2Wrap = document.getElementById('tank2-wrapper');
-        const soilVal = document.getElementById('soil-val'), tempVal = document.getElementById('temp-val'), humVal = document.getElementById('hum-val');
-        const targetInput = document.getElementById('target-input'), saveTargetBtn = document.getElementById('save-target-btn');
-        const btnTankA = document.getElementById('btn-tanka'), btnTankB = document.getElementById('btn-tankb');
-        const ledBtn = document.getElementById('led-btn'), statusText = document.getElementById('status-text');
+    function setTankUI(tankId, percentage) {
+        const fluid = document.getElementById(`tank-${tankId}-fluid`);
+        const label = document.getElementById(`tank-${tankId}-lbl`);
+        const wrapper = document.getElementById(`tank-${tankId}-wrapper`);
 
-        let manualAState = "OFF", manualBState = "OFF", currentLedStatus = "OFF";
+        const cleanPercent = Math.max(0, Math.min(100, parseInt(percentage) || 0));
+        fluid.style.height = cleanPercent + "%";
+        label.innerText = cleanPercent + "%";
 
-        function updateTelemetry(soil, temp, hum, w1, w2) {
-            soilVal.textContent = `${soil.toFixed(0)}%`;
-            tempVal.textContent = `${temp.toFixed(1)}°C`;
-            humVal.textContent = `${hum.toFixed(0)}%`;
-            pct1.textContent = `${w1}%`;
-            pct2.textContent = `${w2}%`;
-
-            liquid1.style.height = `${w1}%`;
-            liquid2.style.height = `${w2}%`;
-
-            if (w1 <= 15) tank1Wrap.classList.add('danger'); else tank1Wrap.classList.remove('danger');
-            if (w2 <= 15) tank2Wrap.classList.add('danger'); else tank2Wrap.classList.remove('danger');
+        if(cleanPercent < 15) {
+            wrapper.classList.add('danger');
+        } else {
+            wrapper.classList.remove('danger');
         }
+    }
 
-        function updateButtonUI(btn, state, label) {
-            btn.textContent = `${label}: ${state}`;
-            btn.className = `override-btn ${state === 'ON' ? 'active' : 'inactive'}`;
-        }
+    async function fetchDashboardTelemetry() {
+        try {
+            const { data: telemetry, error: tErr } = await _supabase
+                .from('telemetry')
+                .select('*')
+                .order('id', { ascending: false })
+                .limit(1)
+                .single();
 
-        function updateLedUI(status) {
-            currentLedStatus = status;
-            ledBtn.textContent = `LED IS ${status}`;
-            ledBtn.className = `led-btn ${status.toLowerCase()}`;
-        }
-
-        async function initDashboard() {
-            statusText.textContent = "Syncing Sync...";
-            
-            let { data: sensors } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
-            if (sensors && sensors.length > 0) {
-                updateTelemetry(sensors.soil_moisture || 0, sensors.temperature, sensors.humidity, sensors.water_level_1 || 0, sensors.water_level_2 || 0);
+            if (!tErr && telemetry) {
+                document.getElementById('soil-val').innerText = (telemetry.soil_moisture ?? '--') + "%";
+                document.getElementById('temp-val').innerText = (telemetry.temperature ?? '--') + "°C";
+                document.getElementById('hum-val').innerText = (telemetry.humidity ?? '--') + "%";
+                setTankUI('a', telemetry.tank_a_level || 0);
+                setTankUI('b', telemetry.tank_b_level || 0);
             }
 
-            let { data: controls } = await supabaseClient.from('device_controls').select('*');
-            if (controls) {
+            const { data: controls, error: cErr } = await _supabase
+                .from('device_controls')
+                .select('*');
+
+            if (!cErr && controls) {
                 controls.forEach(row => {
-                    if (row.device_name === 'target_moisture') targetInput.value = row.status;
-                    if (row.device_name === 'esp32_led') updateLedUI(row.status);
-                    if (row.device_name === 'manual_pump_a') { manualAState = row.status; updateButtonUI(btnTankA, manualAState, "Tank A"); }
-                    if (row.device_name === 'manual_pump_b') { manualBState = row.status; updateButtonUI(btnTankB, manualBState, "Tank B"); }
+                    if (row.device_name === 'esp32_led') {
+                        updateButtonUI('btn-led', row.status === 'ON', 'LED IS ON', 'LED IS OFF', 'on', 'off');
+                    } else if (row.device_name === 'manual_pump_a') {
+                        updateButtonUI('btn-pump-a', row.status === 'ON', 'Tank A: ON', 'Tank A: OFF', 'active', 'inactive');
+                    } else if (row.device_name === 'manual_pump_b') {
+                        updateButtonUI('btn-pump-b', row.status === 'ON', 'Tank B: ON', 'Tank B: OFF', 'active', 'inactive');
+                    } else if (row.device_name === 'target_moisture') {
+                        document.getElementById('target-moisture').value = row.status;
+                    }
                 });
             }
-            statusText.textContent = "Live Stream Active";
+        } catch (e) { console.error("Supabase Error:", e); }
+    }
+
+    function updateButtonUI(elementId, isOn, onText, offText, activeClass, inactiveClass) {
+        const btn = document.getElementById(elementId);
+        btn.innerText = isOn ? onText : offText;
+        if (isOn) {
+            btn.classList.remove(inactiveClass);
+            btn.classList.add(activeClass);
+        } else {
+            btn.classList.remove(activeClass);
+            btn.classList.add(inactiveClass);
         }
+    }
 
-        saveTargetBtn.addEventListener('click', async () => {
-            const val = targetInput.value ? parseInt(targetInput.value) : 50;
-            await supabaseClient.from('device_controls').update({ status: val.toString() }).eq('device_name', 'target_moisture');
-        });
+    async function postDeviceStatus(deviceName, statusValue) {
+        try {
+            await _supabase
+                .from('device_controls')
+                .update({ status: statusValue.toString() })
+                .eq('device_name', deviceName);
+        } catch (e) { console.error(e); }
+    }
 
-        btnTankA.addEventListener('click', async () => {
-            const next = manualAState === "ON" ? "OFF" : "ON";
-            await supabaseClient.from('device_controls').update({ status: next }).eq('device_name', 'manual_pump_a');
-        });
+    document.getElementById('set-btn').addEventListener('click', async function() {
+        const targetVal = document.getElementById('target-moisture').value;
+        await postDeviceStatus('target_moisture', targetVal);
+    });
 
-        btnTankB.addEventListener('click', async () => {
-            const next = manualBState === "ON" ? "OFF" : "ON";
-            await supabaseClient.from('device_controls').update({ status: next }).eq('device_name', 'manual_pump_b');
-        });
+    document.getElementById('btn-pump-a').addEventListener('click', async function() {
+        const isCurrentlyOff = this.classList.contains('inactive');
+        const nextState = isCurrentlyOff ? 'ON' : 'OFF';
+        updateButtonUI('btn-pump-a', isCurrentlyOff, 'Tank A: ON', 'Tank A: OFF', 'active', 'inactive');
+        await postDeviceStatus('manual_pump_a', nextState);
+    });
 
-        ledBtn.addEventListener('click', async () => {
-            const nextState = (currentLedStatus === "ON") ? "OFF" : "ON";
-            await supabaseClient.from('device_controls').update({ status: nextState }).eq('device_name', 'esp32_led');
-        });
+    document.getElementById('btn-pump-b').addEventListener('click', async function() {
+        const isCurrentlyOff = this.classList.contains('inactive');
+        const nextState = isCurrentlyOff ? 'ON' : 'OFF';
+        updateButtonUI('btn-pump-b', isCurrentlyOff, 'Tank B: ON', 'Tank B: OFF', 'active', 'inactive');
+        await postDeviceStatus('manual_pump_b', nextState);
+    });
 
-        supabaseClient.channel('farmland-realtime')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
-                updateTelemetry(payload.new.soil_moisture || 0, payload.new.temperature, payload.new.humidity, payload.new.water_level_1 || 0, payload.new.water_level_2 || 0);
-            })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'device_controls' }, payload => {
-                if (payload.new.device_name === 'target_moisture') targetInput.value = payload.new.status;
-                if (payload.new.device_name === 'esp32_led') updateLedUI(payload.new.status);
-                if (payload.new.device_name === 'manual_pump_a') { manualAState = payload.new.status; updateButtonUI(btnTankA, manualAState, "Tank A"); }
-                if (payload.new.device_name === 'manual_pump_b') { manualBState = payload.new.status; updateButtonUI(btnTankB, manualBState, "Tank B"); }
-            })
-            .subscribe((status) => { if (status === 'SUBSCRIBED') initDashboard(); });
-    </script>
+    document.getElementById('btn-led').addEventListener('click', async function() {
+        const isCurrentlyOff = this.classList.contains('off');
+        const nextState = isCurrentlyOff ? 'ON' : 'OFF';
+        updateButtonUI('btn-led', isCurrentlyOff, 'LED IS ON', 'LED IS OFF', 'on', 'off');
+        await postDeviceStatus('esp32_led', nextState);
+    });
+
+    // Start background fetching engine
+    fetchDashboardTelemetry();
+    setInterval(fetchDashboardTelemetry, 3000);
+</script>
+
 </body>
 </html>
