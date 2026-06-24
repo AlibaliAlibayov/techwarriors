@@ -334,7 +334,7 @@
 
 <div class="dashboard">
     <header>
-        <h1>Farm Telemetry & Control Station</h1>
+        <h1>Tech Worriers - Ağıllı Suvarma Sistemi</h1>
         <div class="status-badge">
             <div class="status-dot"></div>
             System Online
@@ -344,7 +344,7 @@
     <div class="main-grid">
         <div class="tanks-container">
             <div id="tank-a-wrapper" class="tank-wrapper">
-                <div class="tank-label">Reservoir Tank A</div>
+                <div class="tank-label">Yağıs Su Anbarı</div>
                 <div class="glass-tank">
                     <div id="tank-a-fluid" class="liquid"></div>
                 </div>
@@ -352,7 +352,7 @@
             </div>
 
             <div id="tank-b-wrapper" class="tank-wrapper">
-                <div class="tank-label">Reservoir Tank B</div>
+                <div class="tank-label">Ehtiyyat Su Anbarı</div>
                 <div class="glass-tank">
                     <div id="tank-b-fluid" class="liquid"></div>
                 </div>
@@ -365,7 +365,7 @@
                 <div class="metric-info">
                     <div class="metric-header">
                         <svg class="metric-icon soil-icon" viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-                        <h3>Soil Moisture Content</h3>
+                        <h3>Torpaq Nəm Faizi</h3>
                     </div>
                     <p id="soil-val" class="soil-txt">--%</p>
                 </div>
@@ -375,7 +375,7 @@
                 <div class="metric-info">
                     <div class="metric-header">
                         <svg class="metric-icon temp-icon" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
-                        <h3>Ambient Temp</h3>
+                        <h3>Havanın Temperaturu</h3>
                     </div>
                     <p id="temp-val" class="temp-txt">--°C</p>
                 </div>
@@ -383,7 +383,7 @@
                 <div class="metric-info" style="text-align: right;">
                     <div class="metric-header" style="justify-content: flex-end;">
                         <svg class="metric-icon hum-icon" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
-                        <h3>Humidity</h3>
+                        <h3>Rütubət</h3>
                     </div>
                     <p id="hum-val" class="hum-txt">--%</p>
                 </div>
@@ -391,23 +391,23 @@
 
             <div class="control-card">
                 <div>
-                    <div class="control-section-label">Target Moisture Level (%)</div>
+                    <div class="control-section-label">Hədəf Nəm Faizi (%)</div>
                     <div class="input-group">
                         <input type="number" id="target-moisture" class="target-input" value="50" min="0" max="100">
-                        <button id="set-btn" class="save-btn">Set</button>
+                        <button id="set-btn" class="save-btn">Dəyiş</button>
                     </div>
                 </div>
 
                 <div>
-                    <div class="control-section-label">Manual Farmland Irrigation</div>
+                    <div class="control-section-label">Manual Suvarma</div>
                     <div class="manual-container">
-                        <button id="btn-pump-a" class="override-btn inactive">Tank A: OFF</button>
-                        <button id="btn-pump-b" class="override-btn inactive">Tank B: OFF</button>
+                        <button id="btn-pump-a" class="override-btn inactive">Motor A: OFF</button>
+                        <button id="btn-pump-b" class="override-btn inactive">Motor B: OFF</button>
                     </div>
                 </div>
 
                 <div>
-                    <div class="control-section-label">Hardware Actuator</div>
+                    <div class="control-section-label">Yoxlanış Kodu</div>
                     <button id="btn-led" class="led-btn off">LED IS OFF</button>
                 </div>
             </div>
@@ -416,116 +416,147 @@
 </div>
 
 <script>
-    // ⚠️ ENTER YOUR PROJECT CREDENTIALS HERE
-    // ↓ Make sure to explicitly keep the quotes around your values!
-const SUPABASE_URL = "https://zxywkvbpdqmslqpwoeir.supabase.co"; 
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im...";
-    
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+   const SUPABASE_URL = "https://dxalgqtgylopgjgptaou.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4YWxncXRneWxvcGdqZ3B0YW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDgwODAsImV4cCI6MjA5NjU4NDA4MH0.ClONYDUguhlClVMzliqpqEAHBCefCtC2isgE5LeKwVE";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function setTankUI(tankId, percentage) {
-        const fluid = document.getElementById(`tank-${tankId}-fluid`);
-        const label = document.getElementById(`tank-${tankId}-lbl`);
-        const wrapper = document.getElementById(`tank-${tankId}-wrapper`);
+// Fixed ID mappings to align precisely with your visual dashboard structure
+const liquid1 = document.getElementById('tank-a-fluid'), liquid2 = document.getElementById('tank-b-fluid');
+const pct1 = document.getElementById('tank-a-lbl'), pct2 = document.getElementById('tank-b-lbl');
+const tank1Wrap = document.getElementById('tank-a-wrapper'), tank2Wrap = document.getElementById('tank-b-wrapper');
+const soilVal = document.getElementById('soil-val'), tempVal = document.getElementById('temp-val'), humVal = document.getElementById('hum-val');
+const targetInput = document.getElementById('target-moisture'), saveTargetBtn = document.getElementById('set-btn');
+const btnTankA = document.getElementById('btn-pump-a'), btnTankB = document.getElementById('btn-pump-b');
+const ledBtn = document.getElementById('btn-led');
 
-        const cleanPercent = Math.max(0, Math.min(100, parseInt(percentage) || 0));
-        fluid.style.height = cleanPercent + "%";
-        label.innerText = cleanPercent + "%";
+let manualAState = "OFF", manualBState = "OFF", currentLedStatus = "OFF";
 
-        if(cleanPercent < 15) {
-            wrapper.classList.add('danger');
-        } else {
-            wrapper.classList.remove('danger');
+function updateTelemetry(soil, temp, hum, w1, w2) {
+    if (soilVal) soilVal.textContent = `${Number(soil).toFixed(0)}%`;
+    if (tempVal) tempVal.textContent = `${Number(temp).toFixed(1)}°C`;
+    if (humVal) humVal.textContent = `${Number(hum).toFixed(0)}%`;
+    if (pct1) pct1.textContent = `${w1}%`;
+    if (pct2) pct2.textContent = `${w2}%`;
+
+    if (liquid1) liquid1.style.height = `${w1}%`;
+    if (liquid2) liquid2.style.height = `${w2}%`;
+
+    if (tank1Wrap) {
+        if (w1 <= 15) tank1Wrap.classList.add('danger'); else tank1Wrap.classList.remove('danger');
+    }
+    if (tank2Wrap) {
+        if (w2 <= 15) tank2Wrap.classList.add('danger'); else tank2Wrap.classList.remove('danger');
+    }
+}
+
+// Fixed UI state toggle mappings to strictly mirror .active/.inactive and .on/.off classes
+function updateButtonUI(btn, state, label) {
+    if (!btn) return;
+    btn.textContent = `${label}: ${state}`;
+    if (state === 'ON') {
+        btn.classList.remove('inactive');
+        btn.classList.add('active');
+    } else {
+        btn.classList.remove('active');
+        btn.classList.add('inactive');
+    }
+}
+
+function updateLedUI(status) {
+    if (!ledBtn) return;
+    currentLedStatus = status;
+    ledBtn.textContent = `LED IS ${status}`;
+    if (status === 'ON') {
+        ledBtn.classList.remove('off');
+        ledBtn.classList.add('on');
+    } else {
+        ledBtn.classList.remove('on');
+        ledBtn.classList.add('off');
+    }
+}
+
+async function initDashboard() {
+    try {
+        let { data: sensors, error: sErr } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
+        // Bugfix: Correctly parsing array wrapper index to extract active metrics
+        if (!sErr && sensors && sensors.length > 0) {
+            updateTelemetry(
+                sensors.soil_moisture || 0, 
+                sensors.temperature || 0, 
+                sensors.humidity || 0, 
+                sensors.water_level_1 || 0, 
+                sensors.water_level_2 || 0
+            );
         }
-    }
 
-    async function fetchDashboardTelemetry() {
-        try {
-            const { data: telemetry, error: tErr } = await _supabase
-                .from('telemetry')
-                .select('*')
-                .order('id', { ascending: false })
-                .limit(1)
-                .single();
-
-            if (!tErr && telemetry) {
-                document.getElementById('soil-val').innerText = (telemetry.soil_moisture ?? '--') + "%";
-                document.getElementById('temp-val').innerText = (telemetry.temperature ?? '--') + "°C";
-                document.getElementById('hum-val').innerText = (telemetry.humidity ?? '--') + "%";
-                setTankUI('a', telemetry.tank_a_level || 0);
-                setTankUI('b', telemetry.tank_b_level || 0);
-            }
-
-            const { data: controls, error: cErr } = await _supabase
-                .from('device_controls')
-                .select('*');
-
-            if (!cErr && controls) {
-                controls.forEach(row => {
-                    if (row.device_name === 'esp32_led') {
-                        updateButtonUI('btn-led', row.status === 'ON', 'LED IS ON', 'LED IS OFF', 'on', 'off');
-                    } else if (row.device_name === 'manual_pump_a') {
-                        updateButtonUI('btn-pump-a', row.status === 'ON', 'Tank A: ON', 'Tank A: OFF', 'active', 'inactive');
-                    } else if (row.device_name === 'manual_pump_b') {
-                        updateButtonUI('btn-pump-b', row.status === 'ON', 'Tank B: ON', 'Tank B: OFF', 'active', 'inactive');
-                    } else if (row.device_name === 'target_moisture') {
-                        document.getElementById('target-moisture').value = row.status;
-                    }
-                });
-            }
-        } catch (e) { console.error("Supabase Error:", e); }
-    }
-
-    function updateButtonUI(elementId, isOn, onText, offText, activeClass, inactiveClass) {
-        const btn = document.getElementById(elementId);
-        btn.innerText = isOn ? onText : offText;
-        if (isOn) {
-            btn.classList.remove(inactiveClass);
-            btn.classList.add(activeClass);
-        } else {
-            btn.classList.remove(activeClass);
-            btn.classList.add(inactiveClass);
+        let { data: controls, error: cErr } = await supabaseClient.from('device_controls').select('*');
+        if (!cErr && controls) {
+            controls.forEach(row => {
+                if (row.device_name === 'target_moisture' && targetInput) targetInput.value = row.status;
+                if (row.device_name === 'esp32_led') updateLedUI(row.status);
+                if (row.device_name === 'manual_pump_a') { manualAState = row.status; updateButtonUI(btnTankA, manualAState, "Motor A"); }
+                if (row.device_name === 'manual_pump_b') { manualBState = row.status; updateButtonUI(btnTankB, manualBState, "Motor B"); }
+            });
         }
+    } catch (err) {
+        console.error("Dashboard initialization error:", err);
     }
+}
 
-    async function postDeviceStatus(deviceName, statusValue) {
-        try {
-            await _supabase
-                .from('device_controls')
-                .update({ status: statusValue.toString() })
-                .eq('device_name', deviceName);
-        } catch (e) { console.error(e); }
-    }
-
-    document.getElementById('set-btn').addEventListener('click', async function() {
-        const targetVal = document.getElementById('target-moisture').value;
-        await postDeviceStatus('target_moisture', targetVal);
+if (saveTargetBtn) {
+    saveTargetBtn.addEventListener('click', async () => {
+        const val = targetInput.value ? parseInt(targetInput.value) : 50;
+        await supabaseClient.from('device_controls').update({ status: val.toString() }).eq('device_name', 'target_moisture');
     });
+}
 
-    document.getElementById('btn-pump-a').addEventListener('click', async function() {
-        const isCurrentlyOff = this.classList.contains('inactive');
-        const nextState = isCurrentlyOff ? 'ON' : 'OFF';
-        updateButtonUI('btn-pump-a', isCurrentlyOff, 'Tank A: ON', 'Tank A: OFF', 'active', 'inactive');
-        await postDeviceStatus('manual_pump_a', nextState);
+if (btnTankA) {
+    btnTankA.addEventListener('click', async () => {
+        const next = manualAState === "ON" ? "OFF" : "ON";
+        // Optimistic UI update for immediate click feedback
+        manualAState = next;
+        updateButtonUI(btnTankA, manualAState, "Motor A");
+        await supabaseClient.from('device_controls').update({ status: next }).eq('device_name', 'manual_pump_a');
     });
+}
 
-    document.getElementById('btn-pump-b').addEventListener('click', async function() {
-        const isCurrentlyOff = this.classList.contains('inactive');
-        const nextState = isCurrentlyOff ? 'ON' : 'OFF';
-        updateButtonUI('btn-pump-b', isCurrentlyOff, 'Tank B: ON', 'Tank B: OFF', 'active', 'inactive');
-        await postDeviceStatus('manual_pump_b', nextState);
+if (btnTankB) {
+    btnTankB.addEventListener('click', async () => {
+        const next = manualBState === "ON" ? "OFF" : "ON";
+        manualBState = next;
+        updateButtonUI(btnTankB, manualBState, "Motor B");
+        await supabaseClient.from('device_controls').update({ status: next }).eq('device_name', 'manual_pump_b');
     });
+}
 
-    document.getElementById('btn-led').addEventListener('click', async function() {
-        const isCurrentlyOff = this.classList.contains('off');
-        const nextState = isCurrentlyOff ? 'ON' : 'OFF';
-        updateButtonUI('btn-led', isCurrentlyOff, 'LED IS ON', 'LED IS OFF', 'on', 'off');
-        await postDeviceStatus('esp32_led', nextState);
+if (ledBtn) {
+    ledBtn.addEventListener('click', async () => {
+        const nextState = (currentLedStatus === "ON") ? "OFF" : "ON";
+        updateLedUI(nextState);
+        await supabaseClient.from('device_controls').update({ status: nextState }).eq('device_name', 'esp32_led');
     });
+}
 
-    // Start background fetching engine
-    fetchDashboardTelemetry();
-    setInterval(fetchDashboardTelemetry, 3000);
+// Stream and live update handling setup via real-time channel
+supabaseClient.channel('farmland-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
+        if (payload.new) {
+            updateTelemetry(payload.new.soil_moisture || 0, payload.new.temperature || 0, payload.new.humidity || 0, payload.new.water_level_1 || 0, payload.new.water_level_2 || 0);
+        }
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'device_controls' }, payload => {
+        if (payload.new) {
+            if (payload.new.device_name === 'target_moisture' && targetInput) targetInput.value = payload.new.status;
+            if (payload.new.device_name === 'esp32_led') updateLedUI(payload.new.status);
+            if (payload.new.device_name === 'manual_pump_a') { manualAState = payload.new.status; updateButtonUI(btnTankA, manualAState, "Motor A"); }
+            if (payload.new.device_name === 'manual_pump_b') { manualBState = payload.new.status; updateButtonUI(btnTankB, manualBState, "Motor B"); }
+        }
+    })
+    .subscribe((status) => { 
+        if (status === 'SUBSCRIBED') {
+            initDashboard(); 
+        }
+    });
 </script>
 
 </body>
