@@ -71,7 +71,7 @@
             .main-grid { grid-template-columns: 1fr; }
         }
 
-        /* --- VISUAL WATER TANK DESIGNS (FIXED WAVE LOGIC) --- */
+        /* --- NEW CLEAN HORIZONTAL SLIDING WAVE DESIGN --- */
         .tanks-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -93,56 +93,50 @@
             border: 4px solid #475569;
             border-radius: 0 0 20px 20px;
             margin: 0 auto;
-            overflow: hidden; /* Clips the rotating square mask safely inside the tank */
+            overflow: hidden; 
             box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
 
-        /* The container holding the water level */
+        /* Water Base Column */
         .liquid {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 0%; /* Regulated by Javascript variables */
+            height: 0%; /* Driven dynamically by JS */
             background-color: #0284c7;
             transition: height 1s ease-out;
         }
 
-        /* Spinning wave canvas mask trick */
-        .liquid::before {
-            content: "";
+        /* Seamless sliding wave overlay */
+        .wave-top {
             position: absolute;
-            width: 300px;
-            height: 300px;
-            background: #111827; /* Must match container background perfectly */
-            left: 50%;
-            bottom: 100%; /* Sits exactly on the surface line */
-            transform: translate(-50%, 20%); /* Slightly offset down into the blue space */
-            border-radius: 42%; /* Uneven corners make a wavy movement */
-            animation: waveMotion 7s linear infinite;
-            z-index: 5;
+            bottom: 100%; /* Sits cleanly directly on top of the liquid base */
+            left: 0;
+            width: 200%; /* Double width to allow endless looping side to side */
+            height: 12px;
+            fill: #0284c7;
+            animation: waveSlide 3s linear infinite;
+            transform: translate3d(0, 0, 0);
         }
 
-        /* Duplicate shifting overlay for fluid depth realism */
-        .liquid::after {
-            content: "";
+        .wave-back {
             position: absolute;
-            width: 290px;
-            height: 290px;
-            background: rgba(2, 132, 199, 0.4);
-            left: 50%;
             bottom: 100%;
-            transform: translate(-50%, 15%);
-            border-radius: 40%;
-            animation: waveMotion 4s linear infinite;
-            z-index: 2;
+            left: -50%;
+            width: 200%;
+            height: 14px;
+            fill: rgba(2, 132, 199, 0.4);
+            animation: waveSlideBack 4s linear infinite;
+            transform: translate3d(0, 0, 0);
         }
 
         .tank-percentage { font-size: 28px; font-weight: 700; margin-top: 15px; color: var(--text-main); }
 
-        /* Danger states if water levels drop below 15% */
+        /* Danger state colors if water dips below 15% */
         .tank-wrapper.danger .liquid { background-color: #dc2626; }
-        .tank-wrapper.danger .liquid::after { background: rgba(220, 38, 38, 0.4); }
+        .tank-wrapper.danger .wave-top { fill: #dc2626; }
+        .tank-wrapper.danger .wave-back { fill: rgba(220, 38, 38, 0.4); }
         .tank-wrapper.danger .tank-percentage { color: #f87171; }
 
         /* --- RIGHT SIDE PANELS --- */
@@ -186,12 +180,15 @@
 
         .led-btn.on { background: #10b981; color: #fff; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
         .led-btn.off { background: #475569; color: #cbd5e1; }
-        .led-btn:active { transform: scale(0.98); }
 
-        /* CONSTANT ROTATION WAVE ENGINE */
-        @keyframes waveMotion {
-            0% { transform: translate(-50%, 15%) rotate(0deg); }
-            100% { transform: translate(-50%, 15%) rotate(360deg); }
+        /* HORIZONTAL SEAMLESS WAVE ANIMATION */
+        @keyframes waveSlide {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        @keyframes waveSlideBack {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(50%); }
         }
     </style>
 </head>
@@ -213,7 +210,14 @@
                 <div id="tank1-wrapper" class="tank-wrapper">
                     <div class="tank-label">Reservoir Tank A</div>
                     <div class="glass-tank">
-                        <div id="liquid1" class="liquid"></div>
+                        <div id="liquid1" class="liquid">
+                            <svg class="wave-back" viewBox="0 0 20 2" preserveAspectRatio="none">
+                                <path d="M0,1 C4,0 6,2 10,1 C14,0 16,2 20,1 L20,2 L0,2 Z"></path>
+                            </svg>
+                            <svg class="wave-top" viewBox="0 0 20 2" preserveAspectRatio="none">
+                                <path d="M0,1 C4,2 6,0 10,1 C14,2 16,0 20,1 L20,2 L0,2 Z"></path>
+                            </svg>
+                        </div>
                     </div>
                     <div id="pct1" class="tank-percentage">0%</div>
                 </div>
@@ -221,7 +225,14 @@
                 <div id="tank2-wrapper" class="tank-wrapper">
                     <div class="tank-label">Supply Tank B</div>
                     <div class="glass-tank">
-                        <div id="liquid2" class="liquid"></div>
+                        <div id="liquid2" class="liquid">
+                            <svg class="wave-back" viewBox="0 0 20 2" preserveAspectRatio="none">
+                                <path d="M0,1 C4,0 6,2 10,1 C14,0 16,2 20,1 L20,2 L0,2 Z"></path>
+                            </svg>
+                            <svg class="wave-top" viewBox="0 0 20 2" preserveAspectRatio="none">
+                                <path d="M0,1 C4,2 6,0 10,1 C14,2 16,0 20,1 L20,2 L0,2 Z"></path>
+                            </svg>
+                        </div>
                     </div>
                     <div id="pct2" class="tank-percentage">0%</div>
                 </div>
@@ -277,11 +288,11 @@
             pct1.textContent = `${w1}%`;
             pct2.textContent = `${w2}%`;
 
-            // Adjust fluid heights
+            // Adjust fluid column heights safely
             liquid1.style.height = `${w1}%`;
             liquid2.style.height = `${w2}%`;
 
-            // Change color scheme if water gets low (under 15%)
+            // Color shift alert flag triggering
             if (w1 <= 15) tank1Wrap.classList.add('danger');
             else tank1Wrap.classList.remove('danger');
 
