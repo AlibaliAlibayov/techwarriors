@@ -59,7 +59,7 @@
             gap: 8px;
         }
 
-        .status-dot { width: 8px; height: 8px; background: #38bdf8; border-radius: 50%; animate: pulse 2s infinite; }
+        .status-dot { width: 8px; height: 8px; background: #38bdf8; border-radius: 50%; }
 
         .main-grid {
             display: grid;
@@ -71,7 +71,7 @@
             .main-grid { grid-template-columns: 1fr; }
         }
 
-        /* --- VISUAL WATER TANK DESIGNS --- */
+        /* --- VISUAL WATER TANK DESIGNS (FIXED WAVE LOGIC) --- */
         .tanks-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -89,48 +89,63 @@
             position: relative;
             width: 120px;
             height: 200px;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.02);
             border: 4px solid #475569;
-            border-top: none;
-            border-radius: 0 0 16px 16px;
+            border-radius: 0 0 20px 20px;
             margin: 0 auto;
-            overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+            overflow: hidden; /* Clips the rotating square mask safely inside the tank */
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
 
-        /* Liquid body inside glass */
+        /* The container holding the water level */
         .liquid {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 0%; /* Dynamic logic controls this */
-            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+            height: 0%; /* Regulated by Javascript variables */
+            background-color: #0284c7;
             transition: height 1s ease-out;
-            box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
         }
 
-        /* Animated Wavy top layer */
+        /* Spinning wave canvas mask trick */
         .liquid::before {
             content: "";
             position: absolute;
-            width: 200%;
-            height: 15px;
-            top: -10px;
-            left: -50%;
-            background: rgba(14, 165, 233, 0.8);
+            width: 300px;
+            height: 300px;
+            background: #111827; /* Must match container background perfectly */
+            left: 50%;
+            bottom: 100%; /* Sits exactly on the surface line */
+            transform: translate(-50%, 20%); /* Slightly offset down into the blue space */
+            border-radius: 42%; /* Uneven corners make a wavy movement */
+            animation: waveMotion 7s linear infinite;
+            z-index: 5;
+        }
+
+        /* Duplicate shifting overlay for fluid depth realism */
+        .liquid::after {
+            content: "";
+            position: absolute;
+            width: 290px;
+            height: 290px;
+            background: rgba(2, 132, 199, 0.4);
+            left: 50%;
+            bottom: 100%;
+            transform: translate(-50%, 15%);
             border-radius: 40%;
-            animation: wave 4s linear infinite;
+            animation: waveMotion 4s linear infinite;
+            z-index: 2;
         }
 
         .tank-percentage { font-size: 28px; font-weight: 700; margin-top: 15px; color: var(--text-main); }
 
-        /* Danger state for empty tanks */
-        .tank-wrapper.danger .liquid { background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%); box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
-        .tank-wrapper.danger .liquid::before { background: rgba(239, 68, 68, 0.8); }
+        /* Danger states if water levels drop below 15% */
+        .tank-wrapper.danger .liquid { background-color: #dc2626; }
+        .tank-wrapper.danger .liquid::after { background: rgba(220, 38, 38, 0.4); }
         .tank-wrapper.danger .tank-percentage { color: #f87171; }
 
-        /* --- RIGHT SIDE METRICS AND BACKEND TOGGLES --- */
+        /* --- RIGHT SIDE PANELS --- */
         .side-panel { display: flex; flex-direction: column; gap: 20px; }
 
         .metric-card {
@@ -173,10 +188,10 @@
         .led-btn.off { background: #475569; color: #cbd5e1; }
         .led-btn:active { transform: scale(0.98); }
 
-        /* KEYFRAMES WAVE EFFECTS */
-        @keyframes wave {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* CONSTANT ROTATION WAVE ENGINE */
+        @keyframes waveMotion {
+            0% { transform: translate(-50%, 15%) rotate(0deg); }
+            100% { transform: translate(-50%, 15%) rotate(360deg); }
         }
     </style>
 </head>
@@ -257,17 +272,16 @@
         let currentLedStatus = "OFF";
 
         function updateTelemetryDashboard(temperature, humidity, w1, w2) {
-            // Update Textual values
             tempVal.textContent = `${temperature.toFixed(1)}°C`;
             humVal.textContent = `${humidity.toFixed(0)}%`;
             pct1.textContent = `${w1}%`;
             pct2.textContent = `${w2}%`;
 
-            // Adjust physical CSS fluid heights inside graphic tanks
+            // Adjust fluid heights
             liquid1.style.height = `${w1}%`;
             liquid2.style.height = `${w2}%`;
 
-            // Dynamic Alert Coloring: Turn tank red if fluid level drops below 15%
+            // Change color scheme if water gets low (under 15%)
             if (w1 <= 15) tank1Wrap.classList.add('danger');
             else tank1Wrap.classList.remove('danger');
 
@@ -301,7 +315,6 @@
             await supabaseClient.from('device_controls').update({ status: nextState }).eq('device_name', 'esp32_led');
         });
 
-        // Realtime structural pipeline listeners
         supabaseClient
             .channel('live-telemetry')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
