@@ -3,54 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Control Station</title>
+    <title>Advanced IoT Hydro-Station</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .dashboard { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 450px; width: 100%; }
-        h1 { color: #1e293b; margin-bottom: 25px; font-size: 24px; }
-        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-        .card { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; }
-        .card h2 { font-size: 11px; color: #64748b; text-transform: uppercase; margin: 0 0 8px 0; }
-        .value { font-size: 24px; font-weight: bold; color: #0f172a; }
-        .temp-color { color: #ef4444; }
-        .hum-color { color: #3b82f6; }
-        .water-color { color: #06b6d4; }
-        .control-panel { border-top: 1px solid #e2e8f0; padding-top: 25px; }
-        .led-btn { padding: 15px 30px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; border-radius: 8px; width: 100%; transition: 0.2s ease; }
-        .on { background-color: #10b981; color: white; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
-        .off { background-color: #64748b; color: white; }
-        .status { margin-top: 20px; font-size: 12px; color: #94a3b8; }
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary-water: #0ea5e9;
+            --danger-water: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard {
+            background: var(--panel-bg);
+            max-width: 900px;
+            width: 100%;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            padding: 35px;
+            box-sizing: border-box;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+        
+        .status-badge {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 13px;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot { width: 8px; height: 8px; background: #38bdf8; border-radius: 50%; animate: pulse 2s infinite; }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* --- VISUAL WATER TANK DESIGNS --- */
+        .tanks-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            background: #111827;
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid #334155;
+        }
+
+        .tank-wrapper { text-align: center; }
+        .tank-label { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 15px; }
+
+        .glass-tank {
+            position: relative;
+            width: 120px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 4px solid #475569;
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+            margin: 0 auto;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        /* Liquid body inside glass */
+        .liquid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%; /* Dynamic logic controls this */
+            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+            transition: height 1s ease-out;
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+        }
+
+        /* Animated Wavy top layer */
+        .liquid::before {
+            content: "";
+            position: absolute;
+            width: 200%;
+            height: 15px;
+            top: -10px;
+            left: -50%;
+            background: rgba(14, 165, 233, 0.8);
+            border-radius: 40%;
+            animation: wave 4s linear infinite;
+        }
+
+        .tank-percentage { font-size: 28px; font-weight: 700; margin-top: 15px; color: var(--text-main); }
+
+        /* Danger state for empty tanks */
+        .tank-wrapper.danger .liquid { background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%); box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+        .tank-wrapper.danger .liquid::before { background: rgba(239, 68, 68, 0.8); }
+        .tank-wrapper.danger .tank-percentage { color: #f87171; }
+
+        /* --- RIGHT SIDE METRICS AND BACKEND TOGGLES --- */
+        .side-panel { display: flex; flex-direction: column; gap: 20px; }
+
+        .metric-card {
+            background: #111827;
+            border: 1px solid #334155;
+            padding: 20px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-info h3 { margin: 0; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-info p { margin: 5px 0 0 0; font-size: 32px; font-weight: bold; }
+        
+        .temp-txt { color: #f87171; }
+        .hum-txt { color: #60a5fa; }
+
+        .control-card {
+            background: #111827;
+            border: 1px solid #334155;
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .led-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .led-btn.on { background: #10b981; color: #fff; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+        .led-btn.off { background: #475569; color: #cbd5e1; }
+        .led-btn:active { transform: scale(0.98); }
+
+        /* KEYFRAMES WAVE EFFECTS */
+        @keyframes wave {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
     <div class="dashboard">
-        <h1>TechWarriors IoT Station</h1>
-        
-        <div class="grid-container">
-            <div class="card">
-                <h2>Temperature</h2>
-                <div id="temp" class="value temp-color">--°C</div>
+        <header>
+            <div>
+                <h1>TechWarriors Hydro-Monitor</h1>
             </div>
-            <div class="card">
-                <h2>Humidity</h2>
-                <div id="hum" class="value hum-color">--%</div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                <span id="status-text">System Synced</span>
             </div>
-            <div class="card">
-                <h2>Water Level 1</h2>
-                <div id="w1" class="value water-color">--%</div>
+        </header>
+
+        <div class="main-grid">
+            <div class="tanks-container">
+                <div id="tank1-wrapper" class="tank-wrapper">
+                    <div class="tank-label">Reservoir Tank A</div>
+                    <div class="glass-tank">
+                        <div id="liquid1" class="liquid"></div>
+                    </div>
+                    <div id="pct1" class="tank-percentage">0%</div>
+                </div>
+
+                <div id="tank2-wrapper" class="tank-wrapper">
+                    <div class="tank-label">Supply Tank B</div>
+                    <div class="glass-tank">
+                        <div id="liquid2" class="liquid"></div>
+                    </div>
+                    <div id="pct2" class="tank-percentage">0%</div>
+                </div>
             </div>
-            <div class="card">
-                <h2>Water Level 2</h2>
-                <div id="w2" class="value water-color">--%</div>
+
+            <div class="side-panel">
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <h3>Ambient Temperature</h3>
+                        <p id="temp-val" class="temp-txt">--°C</p>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <h3>Relative Humidity</h3>
+                        <p id="hum-val" class="hum-txt">--%</p>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <h3 style="margin:0 0 15px 0; font-size:13px; color:var(--text-muted); text-transform:uppercase;">Hardware Actuator</h3>
+                    <button id="led-btn" class="off">LED IS OFF</button>
+                </div>
             </div>
         </div>
-
-        <div class="control-panel">
-            <button id="led-btn" class="off">LED IS OFF</button>
-        </div>
-
-        <div id="status" class="status">Connecting to network Engine...</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -60,20 +242,37 @@
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const tempEl = document.getElementById('temp');
-        const humEl = document.getElementById('hum');
-        const w1El = document.getElementById('w1');
-        const w2El = document.getElementById('w2');
-        const ledBtn = document.getElementById('led-btn');
-        const statusEl = document.getElementById('status');
+        const liquid1 = document.getElementById('liquid1');
+        const liquid2 = document.getElementById('liquid2');
+        const pct1 = document.getElementById('pct1');
+        const pct2 = document.getElementById('pct2');
+        const tank1Wrap = document.getElementById('tank1-wrapper');
+        const tank2Wrap = document.getElementById('tank2-wrapper');
         
+        const tempVal = document.getElementById('temp-val');
+        const humVal = document.getElementById('hum-val');
+        const ledBtn = document.getElementById('led-btn');
+        const statusText = document.getElementById('status-text');
+
         let currentLedStatus = "OFF";
 
-        function updateUI(temperature, humidity, w1, w2) {
-            tempEl.textContent = `${temperature.toFixed(1)}°C`;
-            humEl.textContent = `${humidity.toFixed(1)}%`;
-            w1El.textContent = `${w1}%`;
-            w2El.textContent = `${w2}%`;
+        function updateTelemetryDashboard(temperature, humidity, w1, w2) {
+            // Update Textual values
+            tempVal.textContent = `${temperature.toFixed(1)}°C`;
+            humVal.textContent = `${humidity.toFixed(0)}%`;
+            pct1.textContent = `${w1}%`;
+            pct2.textContent = `${w2}%`;
+
+            // Adjust physical CSS fluid heights inside graphic tanks
+            liquid1.style.height = `${w1}%`;
+            liquid2.style.height = `${w2}%`;
+
+            // Dynamic Alert Coloring: Turn tank red if fluid level drops below 15%
+            if (w1 <= 15) tank1Wrap.classList.add('danger');
+            else tank1Wrap.classList.remove('danger');
+
+            if (w2 <= 15) tank2Wrap.classList.add('danger');
+            else tank2Wrap.classList.remove('danger');
         }
 
         function updateButtonUI(status) {
@@ -82,38 +281,43 @@
             ledBtn.className = `led-btn ${status.toLowerCase()}`;
         }
 
-        async function loadInitialData() {
-            let { data: sensorData } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
-            if (sensorData && sensorData.length > 0) {
-                updateUI(sensorData.temperature, sensorData.humidity, sensorData.water_level_1 || 0, sensorData.water_level_2 || 0);
+        async function initializeConnectionStreams() {
+            statusText.textContent = "Fetching snapshots...";
+            
+            let { data: sensorRows } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
+            if (sensorRows && sensorRows.length > 0) {
+                updateTelemetryDashboard(sensorRows.temperature, sensorRows.humidity, sensorRows.water_level_1 || 0, sensorRows.water_level_2 || 0);
             }
 
-            let { data: controlData } = await supabaseClient.from('device_controls').select('status').eq('device_name', 'esp32_led').single();
-            if (controlData) updateButtonUI(controlData.status);
+            let { data: controlRow } = await supabaseClient.from('device_controls').select('status').eq('device_name', 'esp32_led').single();
+            if (controlRow) updateButtonUI(controlRow.status);
             
-            statusEl.textContent = "Telemetry engine sync complete.";
+            statusText.textContent = "Live Stream Active";
         }
 
         ledBtn.addEventListener('click', async () => {
-            const targetStatus = (currentLedStatus === "ON") ? "OFF" : "ON";
-            statusEl.textContent = "Broadcasting switch event...";
-            await supabaseClient.from('device_controls').update({ status: targetStatus }).eq('device_name', 'esp32_led');
+            const nextState = (currentLedStatus === "ON") ? "OFF" : "ON";
+            statusText.textContent = "Sending override...";
+            await supabaseClient.from('device_controls').update({ status: nextState }).eq('device_name', 'esp32_led');
         });
 
+        // Realtime structural pipeline listeners
         supabaseClient
-            .channel('iot-sync')
+            .channel('live-telemetry')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
-                updateUI(payload.new.temperature, payload.new.humidity, payload.new.water_level_1 || 0, payload.new.water_level_2 || 0);
-                statusEl.textContent = "New telemetry stream received.";
+                updateTelemetryDashboard(payload.new.temperature, payload.new.humidity, payload.new.water_level_1 || 0, payload.new.water_level_2 || 0);
+                statusText.textContent = "Data Pack Received";
+                setTimeout(() => { statusText.textContent = "Live Stream Active"; }, 1500);
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'device_controls' }, payload => {
                 if (payload.new.device_name === 'esp32_led') {
                     updateButtonUI(payload.new.status);
-                    statusEl.textContent = `LED set to ${payload.new.status}`;
+                    statusText.textContent = `Actuator set: ${payload.new.status}`;
+                    setTimeout(() => { statusText.textContent = "Live Stream Active"; }, 1500);
                 }
             })
             .subscribe((status) => {
-                if (status === 'SUBSCRIBED') loadInitialData();
+                if (status === 'SUBSCRIBED') initializeConnectionStreams();
             });
     </script>
 </body>
