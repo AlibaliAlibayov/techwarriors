@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced IoT Hydro-Station</title>
+    <title>TechWarriors Smart Farmland Ecosystem</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -12,6 +12,7 @@
             --text-muted: #94a3b8;
             --primary-water: #0ea5e9;
             --danger-water: #ef4444;
+            --accent-green: #10b981;
         }
 
         body {
@@ -28,7 +29,7 @@
 
         .dashboard {
             background: var(--panel-bg);
-            max-width: 900px;
+            max-width: 1000px;
             width: 100%;
             border-radius: 24px;
             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
@@ -48,7 +49,7 @@
         h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
         
         .status-badge {
-            background: #1e293b;
+            background: #111827;
             border: 1px solid #334155;
             padding: 6px 14px;
             border-radius: 50px;
@@ -71,7 +72,6 @@
             .main-grid { grid-template-columns: 1fr; }
         }
 
-        /* --- NEW CLEAN HORIZONTAL SLIDING WAVE DESIGN --- */
         .tanks-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -87,108 +87,133 @@
 
         .glass-tank {
             position: relative;
-            width: 120px;
-            height: 200px;
+            width: 110px;
+            height: 180px;
             background: rgba(255, 255, 255, 0.02);
             border: 4px solid #475569;
             border-radius: 0 0 20px 20px;
             margin: 0 auto;
-            overflow: hidden; 
+            overflow: hidden;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
 
-        /* Water Base Column */
         .liquid {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 0%; /* Driven dynamically by JS */
-            background-color: #0284c7;
+            height: 0%;
+            background: #0284c7;
             transition: height 1s ease-out;
         }
 
-        /* Seamless sliding wave overlay */
-        .wave-top {
+        .liquid::before {
+            content: "";
             position: absolute;
-            bottom: 100%; /* Sits cleanly directly on top of the liquid base */
             left: 0;
-            width: 200%; /* Double width to allow endless looping side to side */
-            height: 12px;
-            fill: #0284c7;
-            animation: waveSlide 3s linear infinite;
-            transform: translate3d(0, 0, 0);
-        }
-
-        .wave-back {
-            position: absolute;
             bottom: 100%;
-            left: -50%;
             width: 200%;
-            height: 14px;
-            fill: rgba(2, 132, 199, 0.4);
-            animation: waveSlideBack 4s linear infinite;
-            transform: translate3d(0, 0, 0);
+            height: 12px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,42.4V0Z' fill='%230284c7'/%3E%3C/svg%3E");
+            background-size: 110px 12px;
+            animation: waveHorizontalMove 2s linear infinite;
         }
 
-        .tank-percentage { font-size: 28px; font-weight: 700; margin-top: 15px; color: var(--text-main); }
+        .tank-percentage { font-size: 24px; font-weight: 700; margin-top: 12px; color: var(--text-main); }
 
-        /* Danger state colors if water dips below 15% */
-        .tank-wrapper.danger .liquid { background-color: #dc2626; }
-        .tank-wrapper.danger .wave-top { fill: #dc2626; }
-        .tank-wrapper.danger .wave-back { fill: rgba(220, 38, 38, 0.4); }
+        .tank-wrapper.danger .liquid { background: #dc2626; }
+        .tank-wrapper.danger .liquid::before {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,42.4V0Z' fill='%23dc2626'/%3E%3C/svg%3E");
+        }
         .tank-wrapper.danger .tank-percentage { color: #f87171; }
 
-        /* --- RIGHT SIDE PANELS --- */
         .side-panel { display: flex; flex-direction: column; gap: 20px; }
 
         .metric-card {
             background: #111827;
             border: 1px solid #334155;
-            padding: 20px;
+            padding: 16px 20px;
             border-radius: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .metric-info h3 { margin: 0; font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-info p { margin: 5px 0 0 0; font-size: 32px; font-weight: bold; }
+        .metric-info h3 { margin: 0; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-info p { margin: 5px 0 0 0; font-size: 28px; font-weight: bold; }
         
+        .soil-txt { color: #ea580c; }
         .temp-txt { color: #f87171; }
         .hum-txt { color: #60a5fa; }
 
         .control-card {
             background: #111827;
             border: 1px solid #334155;
-            padding: 25px;
+            padding: 20px;
             border-radius: 16px;
-            text-align: center;
-            margin-top: auto;
         }
 
-        .led-btn {
-            width: 100%;
-            padding: 16px;
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .target-input {
+            flex: 1;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 10px;
+            color: #fff;
             font-size: 16px;
+            text-align: center;
+        }
+
+        .save-btn {
+            background: var(--accent-green);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .manual-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .override-btn {
+            padding: 12px;
             font-weight: 600;
             border: none;
-            border-radius: 12px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
+        .override-btn.active { background: #eab308; color: #000; box-shadow: 0 0 15px rgba(234,179,8,0.4); }
+        .override-btn.inactive { background: #475569; color: #cbd5e1; }
 
+        .led-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
         .led-btn.on { background: #10b981; color: #fff; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
         .led-btn.off { background: #475569; color: #cbd5e1; }
 
-        /* HORIZONTAL SEAMLESS WAVE ANIMATION */
-        @keyframes waveSlide {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-        @keyframes waveSlideBack {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(50%); }
+        @keyframes waveHorizontalMove {
+            0% { background-position-x: 0px; }
+            100% { background-position-x: 110px; }
         }
     </style>
 </head>
@@ -197,7 +222,7 @@
     <div class="dashboard">
         <header>
             <div>
-                <h1>TechWarriors Hydro-Monitor</h1>
+                <h1>TechWarriors Farmland Command Center</h1>
             </div>
             <div class="status-badge">
                 <div class="status-dot"></div>
@@ -209,31 +234,13 @@
             <div class="tanks-container">
                 <div id="tank1-wrapper" class="tank-wrapper">
                     <div class="tank-label">Reservoir Tank A</div>
-                    <div class="glass-tank">
-                        <div id="liquid1" class="liquid">
-                            <svg class="wave-back" viewBox="0 0 20 2" preserveAspectRatio="none">
-                                <path d="M0,1 C4,0 6,2 10,1 C14,0 16,2 20,1 L20,2 L0,2 Z"></path>
-                            </svg>
-                            <svg class="wave-top" viewBox="0 0 20 2" preserveAspectRatio="none">
-                                <path d="M0,1 C4,2 6,0 10,1 C14,2 16,0 20,1 L20,2 L0,2 Z"></path>
-                            </svg>
-                        </div>
-                    </div>
+                    <div class="glass-tank"><div id="liquid1" class="liquid"></div></div>
                     <div id="pct1" class="tank-percentage">0%</div>
                 </div>
 
                 <div id="tank2-wrapper" class="tank-wrapper">
                     <div class="tank-label">Supply Tank B</div>
-                    <div class="glass-tank">
-                        <div id="liquid2" class="liquid">
-                            <svg class="wave-back" viewBox="0 0 20 2" preserveAspectRatio="none">
-                                <path d="M0,1 C4,0 6,2 10,1 C14,0 16,2 20,1 L20,2 L0,2 Z"></path>
-                            </svg>
-                            <svg class="wave-top" viewBox="0 0 20 2" preserveAspectRatio="none">
-                                <path d="M0,1 C4,2 6,0 10,1 C14,2 16,0 20,1 L20,2 L0,2 Z"></path>
-                            </svg>
-                        </div>
-                    </div>
+                    <div class="glass-tank"><div id="liquid2" class="liquid"></div></div>
                     <div id="pct2" class="tank-percentage">0%</div>
                 </div>
             </div>
@@ -241,20 +248,36 @@
             <div class="side-panel">
                 <div class="metric-card">
                     <div class="metric-info">
-                        <h3>Ambient Temperature</h3>
-                        <p id="temp-val" class="temp-txt">--°C</p>
+                        <h3>Soil Moisture Content</h3>
+                        <p id="soil-val" class="soil-txt">--%</p>
                     </div>
                 </div>
 
                 <div class="metric-card">
                     <div class="metric-info">
-                        <h3>Relative Humidity</h3>
-                        <p id="hum-val" class="hum-txt">--%</p>
+                        <h3>Ambient Temp / Humidity</h3>
+                        <p style="font-size:22px; margin-top:8px;"><span id="temp-val" class="temp-txt">--°C</span> / <span id="hum-val" class="hum-txt">--%</span></p>
                     </div>
                 </div>
 
                 <div class="control-card">
-                    <h3 style="margin:0 0 15px 0; font-size:13px; color:var(--text-muted); text-transform:uppercase;">Hardware Actuator</h3>
+                    <h3 style="margin:0; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Target Moisture Level (%)</h3>
+                    <div class="input-group">
+                        <input type="number" id="target-input" class="target-input" placeholder="Default: 50" min="0" max="100">
+                        <button id="save-target-btn" class="save-btn">Set</button>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <h3 style="margin:0 0 10px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Manual Farmland Irrigation</h3>
+                    <div class="manual-container">
+                        <button id="btn-tanka" class="override-btn inactive">Pump Tank A</button>
+                        <button id="btn-tankb" class="override-btn inactive">Pump Tank B</button>
+                    </div>
+                </div>
+
+                <div class="control-card">
+                    <h3 style="margin:0 0 10px 0; font-size:12px; color:var(--text-muted); text-transform:uppercase;">Hardware Actuator</h3>
                     <button id="led-btn" class="off">LED IS OFF</button>
                 </div>
             </div>
@@ -265,84 +288,94 @@
     <script>
         const SUPABASE_URL = "https://dxalgqtgylopgjgptaou.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4YWxncXRneWxvcGdqZ3B0YW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDgwODAsImV4cCI6MjA5NjU4NDA4MH0.ClONYDUguhlClVMzliqpqEAHBCefCtC2isgE5LeKwVE";
-        
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const liquid1 = document.getElementById('liquid1');
-        const liquid2 = document.getElementById('liquid2');
-        const pct1 = document.getElementById('pct1');
-        const pct2 = document.getElementById('pct2');
-        const tank1Wrap = document.getElementById('tank1-wrapper');
-        const tank2Wrap = document.getElementById('tank2-wrapper');
-        
-        const tempVal = document.getElementById('temp-val');
-        const humVal = document.getElementById('hum-val');
-        const ledBtn = document.getElementById('led-btn');
-        const statusText = document.getElementById('status-text');
+        const liquid1 = document.getElementById('liquid1'), liquid2 = document.getElementById('liquid2');
+        const pct1 = document.getElementById('pct1'), pct2 = document.getElementById('pct2');
+        const tank1Wrap = document.getElementById('tank1-wrapper'), tank2Wrap = document.getElementById('tank2-wrapper');
+        const soilVal = document.getElementById('soil-val'), tempVal = document.getElementById('temp-val'), humVal = document.getElementById('hum-val');
+        const targetInput = document.getElementById('target-input'), saveTargetBtn = document.getElementById('save-target-btn');
+        const btnTankA = document.getElementById('btn-tanka'), btnTankB = document.getElementById('btn-tankb');
+        const ledBtn = document.getElementById('led-btn'), statusText = document.getElementById('status-text');
 
-        let currentLedStatus = "OFF";
+        let manualAState = "OFF", manualBState = "OFF", currentLedStatus = "OFF";
 
-        function updateTelemetryDashboard(temperature, humidity, w1, w2) {
-            tempVal.textContent = `${temperature.toFixed(1)}°C`;
-            humVal.textContent = `${humidity.toFixed(0)}%`;
+        function updateTelemetry(soil, temp, hum, w1, w2) {
+            soilVal.textContent = `${soil.toFixed(0)}%`;
+            tempVal.textContent = `${temp.toFixed(1)}°C`;
+            humVal.textContent = `${hum.toFixed(0)}%`;
             pct1.textContent = `${w1}%`;
             pct2.textContent = `${w2}%`;
 
-            // Adjust fluid column heights safely
             liquid1.style.height = `${w1}%`;
             liquid2.style.height = `${w2}%`;
 
-            // Color shift alert flag triggering
-            if (w1 <= 15) tank1Wrap.classList.add('danger');
-            else tank1Wrap.classList.remove('danger');
-
-            if (w2 <= 15) tank2Wrap.classList.add('danger');
-            else tank2Wrap.classList.remove('danger');
+            if (w1 <= 15) tank1Wrap.classList.add('danger'); else tank1Wrap.classList.remove('danger');
+            if (w2 <= 15) tank2Wrap.classList.add('danger'); else tank2Wrap.classList.remove('danger');
         }
 
-        function updateButtonUI(status) {
+        function updateButtonUI(btn, state, label) {
+            btn.textContent = `${label}: ${state}`;
+            btn.className = `override-btn ${state === 'ON' ? 'active' : 'inactive'}`;
+        }
+
+        function updateLedUI(status) {
             currentLedStatus = status;
             ledBtn.textContent = `LED IS ${status}`;
             ledBtn.className = `led-btn ${status.toLowerCase()}`;
         }
 
-        async function initializeConnectionStreams() {
-            statusText.textContent = "Fetching snapshots...";
+        async function initDashboard() {
+            statusText.textContent = "Syncing Sync...";
             
-            let { data: sensorRows } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
-            if (sensorRows && sensorRows.length > 0) {
-                updateTelemetryDashboard(sensorRows.temperature, sensorRows.humidity, sensorRows.water_level_1 || 0, sensorRows.water_level_2 || 0);
+            let { data: sensors } = await supabaseClient.from('sensor_data').select('*').order('id', { ascending: false }).limit(1);
+            if (sensors && sensors.length > 0) {
+                updateTelemetry(sensors.soil_moisture || 0, sensors.temperature, sensors.humidity, sensors.water_level_1 || 0, sensors.water_level_2 || 0);
             }
 
-            let { data: controlRow } = await supabaseClient.from('device_controls').select('status').eq('device_name', 'esp32_led').single();
-            if (controlRow) updateButtonUI(controlRow.status);
-            
+            let { data: controls } = await supabaseClient.from('device_controls').select('*');
+            if (controls) {
+                controls.forEach(row => {
+                    if (row.device_name === 'target_moisture') targetInput.value = row.status;
+                    if (row.device_name === 'esp32_led') updateLedUI(row.status);
+                    if (row.device_name === 'manual_pump_a') { manualAState = row.status; updateButtonUI(btnTankA, manualAState, "Tank A"); }
+                    if (row.device_name === 'manual_pump_b') { manualBState = row.status; updateButtonUI(btnTankB, manualBState, "Tank B"); }
+                });
+            }
             statusText.textContent = "Live Stream Active";
         }
 
+        saveTargetBtn.addEventListener('click', async () => {
+            const val = targetInput.value ? parseInt(targetInput.value) : 50;
+            await supabaseClient.from('device_controls').update({ status: val.toString() }).eq('device_name', 'target_moisture');
+        });
+
+        btnTankA.addEventListener('click', async () => {
+            const next = manualAState === "ON" ? "OFF" : "ON";
+            await supabaseClient.from('device_controls').update({ status: next }).eq('device_name', 'manual_pump_a');
+        });
+
+        btnTankB.addEventListener('click', async () => {
+            const next = manualBState === "ON" ? "OFF" : "ON";
+            await supabaseClient.from('device_controls').update({ status: next }).eq('device_name', 'manual_pump_b');
+        });
+
         ledBtn.addEventListener('click', async () => {
             const nextState = (currentLedStatus === "ON") ? "OFF" : "ON";
-            statusText.textContent = "Sending override...";
             await supabaseClient.from('device_controls').update({ status: nextState }).eq('device_name', 'esp32_led');
         });
 
-        supabaseClient
-            .channel('live-telemetry')
+        supabaseClient.channel('farmland-realtime')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_data' }, payload => {
-                updateTelemetryDashboard(payload.new.temperature, payload.new.humidity, payload.new.water_level_1 || 0, payload.new.water_level_2 || 0);
-                statusText.textContent = "Data Pack Received";
-                setTimeout(() => { statusText.textContent = "Live Stream Active"; }, 1500);
+                updateTelemetry(payload.new.soil_moisture || 0, payload.new.temperature, payload.new.humidity, payload.new.water_level_1 || 0, payload.new.water_level_2 || 0);
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'device_controls' }, payload => {
-                if (payload.new.device_name === 'esp32_led') {
-                    updateButtonUI(payload.new.status);
-                    statusText.textContent = `Actuator set: ${payload.new.status}`;
-                    setTimeout(() => { statusText.textContent = "Live Stream Active"; }, 1500);
-                }
+                if (payload.new.device_name === 'target_moisture') targetInput.value = payload.new.status;
+                if (payload.new.device_name === 'esp32_led') updateLedUI(payload.new.status);
+                if (payload.new.device_name === 'manual_pump_a') { manualAState = payload.new.status; updateButtonUI(btnTankA, manualAState, "Tank A"); }
+                if (payload.new.device_name === 'manual_pump_b') { manualBState = payload.new.status; updateButtonUI(btnTankB, manualBState, "Tank B"); }
             })
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') initializeConnectionStreams();
-            });
+            .subscribe((status) => { if (status === 'SUBSCRIBED') initDashboard(); });
     </script>
 </body>
 </html>
